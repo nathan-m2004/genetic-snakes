@@ -19,6 +19,12 @@ export default class Matrix {
     this.data = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0))
   }
 
+  copy(): Matrix {
+    const copy = new Matrix(this.rows, this.cols)
+    copy.data = this.data
+    return copy
+  }
+
   /**
    * Fills the matrix with random values between -1 and 1.
    */

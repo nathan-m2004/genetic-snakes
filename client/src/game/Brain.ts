@@ -113,19 +113,46 @@ class NeuralNetwork {
 
     return output!.toArray()
   }
+  copy(): NeuralNetwork {
+    const copy = new NeuralNetwork(this.inputNode, this.hiddenNode, this.outputNode)
+
+    copy.weights_ih = this.weights_ih.copy()
+    copy.weights_ho = this.weights_ho.copy()
+    copy.bias_h = this.bias_h.copy()
+    copy.bias_o = this.bias_o.copy()
+
+    return copy
+  }
 }
 
 export default class Brain {
   neuralnetwork: NeuralNetwork
-  snake: Snake
-  constructor(snake: Snake) {
+  snake: Snake | null
+  constructor(snake: Snake | null, neuralnetwork?: NeuralNetwork) {
     this.snake = snake
 
-    this.neuralnetwork = new NeuralNetwork(10, 8, 3)
+    if (neuralnetwork) {
+      this.neuralnetwork = neuralnetwork
+    } else {
+      this.neuralnetwork = new NeuralNetwork(10, 16, 3)
+    }
+  }
+  copy(): Brain {
+    return new Brain(null, this.neuralnetwork.copy())
+  }
+  crossover(parentB: Brain) {
+    let copy = this.copy()
+    const neural = copy.neuralnetwork.crossover(parentB!.neuralnetwork)
+    copy.neuralnetwork = neural
+    return copy
+  }
+  mutate(rate: number) {
+    this.neuralnetwork.mutate(rate)
+    return this
   }
   checkDirections() {
     let directions = []
-    switch (this.snake.direction.str) {
+    switch (this.snake!.direction.str) {
       case 'right':
         directions.push({ x: 1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 })
         break
@@ -139,19 +166,19 @@ export default class Brain {
         directions.push({ x: 0, y: 1 }, { x: 1, y: 0 }, { x: -1, y: 0 })
         break
     }
-    const head = { x: this.snake.positions[0]!.x, y: this.snake.positions[0]!.y }
+    const head = { x: this.snake!.positions[0]!.x, y: this.snake!.positions[0]!.y }
     let output = [0, 0, 0, 0, 0, 0]
     directions.forEach((direction, index) => {
       const headPosition = { x: head.x + direction.x, y: head.y + direction.y }
       if (
         headPosition.x < 0 ||
         headPosition.y < 0 ||
-        headPosition.x > this.snake.TILECOUNT - 1 ||
-        headPosition.y > this.snake.TILECOUNT - 1
+        headPosition.x > this.snake!.TILECOUNT - 1 ||
+        headPosition.y > this.snake!.TILECOUNT - 1
       ) {
         output[index]!++
       }
-      this.snake.positions.forEach((position) => {
+      this.snake!.positions.forEach((position) => {
         if (headPosition.x === position.x && headPosition.y === position.y) {
           output[index + 3]!++
         }
@@ -160,58 +187,90 @@ export default class Brain {
     return output
   }
   moveDirectional(direction: string) {
-    const currentDirection = this.snake.direction.str
+    const currentDirection = this.snake!.direction.str
 
     switch (currentDirection) {
       case 'up':
         if (direction === 'left') {
-          this.snake.left()
+          this.snake!.left()
         } else if (direction === 'right') {
-          this.snake.right()
+          this.snake!.right()
         }
         break
 
       case 'down':
         if (direction === 'left') {
-          this.snake.right() // Turning left while facing down
+          this.snake!.right() // Turning left while facing down
         } else if (direction === 'right') {
-          this.snake.left() // Turning right while facing down
+          this.snake!.left() // Turning right while facing down
         }
         break
 
       case 'left':
         if (direction === 'left') {
-          this.snake.down()
+          this.snake!.down()
         } else if (direction === 'right') {
-          this.snake.up()
+          this.snake!.up()
         }
         break
 
       case 'right':
         if (direction === 'left') {
-          this.snake.up()
+          this.snake!.up()
         } else if (direction === 'right') {
-          this.snake.down()
+          this.snake!.down()
         }
         break
     }
   }
   think() {
+    const head = this.snake!.positions[0]!
+    const plant = this.snake!.plant.position
+
     let input: number[] = []
 
-    input.push(this.snake.positions[0]!.x, this.snake.positions[0]!.y)
-    input.push(this.snake.plant.position.x, this.snake.plant.position.y)
-    input.push(...this.checkDirections())
+    // --- 1. NEW RELATIVE INPUTS (4) ---
+    // Instead of absolute coords, tell the snake *where* the plant is
+    // relative to its head.
+    input.push(plant.x < head.x ? 1 : 0) // Plant is Left
+    input.push(plant.x > head.x ? 1 : 0) // Plant is Right
+    input.push(plant.y < head.y ? 1 : 0) // Plant is Up
+    input.push(plant.y > head.y ? 1 : 0) // Plant is Down
+
+    // --- 2. DANGER INPUTS (6) ---
+    // Your checkDirections() is already good. It's relative.
+    const dangers = this.checkDirections()
+    input.push(...dangers)
+
+    // TOTAL INPUTS = 10 (which matches your NN constructor)
 
     let output = this.neuralnetwork.feedForward(input)
-    if (output[0]! > 0.5) {
-      return // go straigth
+
+    // --- 3. FIXED OUTPUT LOGIC (Argmax) ---
+    // Find the index of the highest value in the output array.
+    // This forces the snake to make only ONE decision.
+    let maxOutput = -Infinity
+    let decisionIndex = 0
+
+    for (let i = 0; i < output.length; i++) {
+      if (output[i]! > maxOutput) {
+        maxOutput = output[i]!
+        decisionIndex = i
+      }
     }
-    if (output[1]! > 0.5) {
-      this.moveDirectional('right')
-    }
-    if (output[2]! > 0.5) {
-      this.moveDirectional('left')
+
+    switch (decisionIndex) {
+      case 0:
+        // Go straight (do nothing)
+        break
+      case 1:
+        // Turn right
+        this.moveDirectional('right')
+        break
+      case 2:
+        // Turn left
+        this.moveDirectional('left')
+        break
     }
   }
 }

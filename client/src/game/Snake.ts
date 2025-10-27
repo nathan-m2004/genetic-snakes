@@ -30,8 +30,19 @@ export default class Snake {
   }
   players: any
   opacity: number
-  constructor(TILECOUNT: number, frames: Frames) {
+  lastDistanceToPlant: number
+  REWARD_EAT_PLANT: number
+  REWARD_MOVE_CLOSER: number
+  PENALTY_MOVE_FARTHER: number
+  PENALTY_DIE: number
+  REWARD_ALIVE: number
+  constructor(TILECOUNT: number, frames: Frames, seed: number, brain?: Brain) {
     this.TILECOUNT = TILECOUNT
+    this.REWARD_EAT_PLANT = 700
+    this.REWARD_MOVE_CLOSER = 0
+    this.PENALTY_MOVE_FARTHER = 0
+    this.REWARD_ALIVE = 1
+    this.PENALTY_DIE = 100
 
     this.direction = { x: 1, y: 0, str: 'right' }
     this.positions = [
@@ -40,6 +51,7 @@ export default class Snake {
       { x: this.TILECOUNT / 2 - 2, y: this.TILECOUNT / 2, direction: 'right' },
     ]
     this.lastPosition = { x: 3, y: 5, direction: 'right' }
+    this.lastDistanceToPlant = Infinity
     this.frames = frames
 
     this.times = {
@@ -50,7 +62,7 @@ export default class Snake {
       timeSinceDead: 0,
       timeToDesapear: 2,
     }
-    this.plant = new Plant(this.TILECOUNT)
+    this.plant = new Plant(this.TILECOUNT, seed)
     this.opacity = 1
 
     this.color = `hsl(${getRandomInt(0, 360)}, ${getRandomInt(0, 45)}%, ${getRandomInt(0, 60)}%)`
@@ -62,7 +74,11 @@ export default class Snake {
     this.rotated = false
     this.dead = false
     this.score = 0
-    this.brain = new Brain(this)
+    if (brain) {
+      this.brain = brain
+    } else {
+      this.brain = new Brain(this)
+    }
   }
   eat() {
     if (
@@ -73,7 +89,7 @@ export default class Snake {
       return
     }
 
-    this.score++
+    this.score += this.REWARD_EAT_PLANT
     this.times.timeSinceLastEat = 0
     this.positions.push(this.lastPosition)
 
@@ -91,6 +107,7 @@ export default class Snake {
     if (this.times.timeSinceLastMove >= this.times.timeToMove * this.frames.gameTick) {
       if (this.dead) return
       this.times.timeSinceLastMove = 0
+      this.score += this.REWARD_ALIVE
       this.brain.think()
       this.move()
       this.rotated = false
@@ -113,11 +130,21 @@ export default class Snake {
     }
 
     const head = this.positions[0]
-    if (!head) return
+    const dist = Math.hypot(head!.x - this.plant.position.x, head!.y - this.plant.position.y)
 
-    head.direction = this.direction.str
-    head.x += this.direction.x
-    head.y += this.direction.y
+    head!.direction = this.direction.str
+    head!.x += this.direction.x
+    head!.y += this.direction.y
+
+    if (dist < this.lastDistanceToPlant) {
+      // We moved CLOSER to the plant
+      this.score += this.REWARD_MOVE_CLOSER
+    } else {
+      // We moved FARTHER away
+      this.score -= this.PENALTY_MOVE_FARTHER
+    }
+
+    this.lastDistanceToPlant = dist
 
     this.checkDead()
 
@@ -130,6 +157,7 @@ export default class Snake {
     if (!head) return
 
     if (head.x < 0 || head.y < 0 || head.x > this.TILECOUNT - 1 || head.y > this.TILECOUNT - 1) {
+      this.score -= this.PENALTY_DIE
       this.dead = true
       return
     }
@@ -138,12 +166,14 @@ export default class Snake {
       const segment = this.positions[i]
       if (!segment) return
       if (head.x === segment.x && head.y === segment.y) {
+        this.score -= this.PENALTY_DIE
         this.dead = true
         return
       }
     }
 
     if (this.times.timeSinceLastEat >= this.times.timeToDie * this.frames.gameTick) {
+      this.score -= this.PENALTY_DIE
       this.dead = true
     }
   }

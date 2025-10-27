@@ -5,10 +5,10 @@ export default class Plant {
   seededGenerator: SeededRandom
   position: { x: number; y: number }
   color: string
-  constructor(TILECOUNT: number) {
+  constructor(TILECOUNT: number, seed: number) {
     this.TILECOUNT = TILECOUNT
 
-    this.seededGenerator = new SeededRandom(123)
+    this.seededGenerator = new SeededRandom(seed)
     this.position = {
       x: this.seededGenerator.nextInt(0, this.TILECOUNT - 1),
       y: this.seededGenerator.nextInt(0, this.TILECOUNT - 1),

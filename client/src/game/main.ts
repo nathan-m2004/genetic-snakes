@@ -22,13 +22,15 @@ export default class Game {
   renderCanvasContext: CanvasRenderingContext2D
   POPULATION_SIZE: number
   globalOpacity: number
+  generation: number
+  TOURNAMENT_SIZE: number
+  ELITISM_SIZE: number
+  MUTATION_RATE: number
   constructor(canvas: HTMLCanvasElement) {
     this.TILECOUNT = 10
     this.INTERNAL_WIDTH = 800
     this.INTERNAL_HEIGHT = 800
     this.POPULATION_SIZE = 1000
-
-    this.globalOpacity = 0.5
 
     this.renderCanvas = canvas
     this.renderCanvasContext = this.renderCanvas.getContext('2d') as CanvasRenderingContext2D
@@ -38,26 +40,70 @@ export default class Game {
     this.canvas.width = this.INTERNAL_WIDTH
     this.canvas.height = this.INTERNAL_HEIGHT
     this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D
+    this.context.imageSmoothingEnabled = false
+
     this.frames = { animationFrame: 0, currentFrame: 0, lastFrame: 0, deltaTime: 0, gameTick: 0.8 }
+    this.globalOpacity = 0.5
 
     this.players = []
-    for (let i = 0; i < this.POPULATION_SIZE; i++) {
-      this.players.push(new Snake(this.TILECOUNT, this.frames))
-    }
     this.tiles = new Tiles(this.canvas, this.context, this.TILECOUNT)
     this.tiles.calculateTiles()
 
-    window.addEventListener('keydown', (event) => {
-      if (event.code === 'KeyW') {
-        this.players[0]?.up()
-      } else if (event.code === 'KeyS') {
-        this.players[0]?.down()
-      } else if (event.code === 'KeyD') {
-        this.players[0]?.right()
-      } else if (event.code === 'KeyA') {
-        this.players[0]?.left()
+    this.generation = 1
+    this.TOURNAMENT_SIZE = 200
+    this.ELITISM_SIZE = 10
+    this.MUTATION_RATE = 0.02
+
+    for (let i = 0; i < this.POPULATION_SIZE; i++) {
+      this.players.push(new Snake(this.TILECOUNT, this.frames, this.generation))
+    }
+  }
+  tournament() {
+    let best: Snake | null = null
+    for (let i = 0; i < this.TOURNAMENT_SIZE; i++) {
+      const randomSnake = this.players[Math.floor(Math.random() * this.POPULATION_SIZE)]
+
+      if (best === null || randomSnake!.score > best.score) {
+        best = randomSnake!
       }
+    }
+    return best!
+  }
+  nextGeneration() {
+    this.generation++
+    this.players.sort((a, b) => b.score - a.score)
+    let nextGeneration: Snake[] = []
+
+    // ELITISM
+    const elitism = this.players.slice(0, this.ELITISM_SIZE)
+    elitism.forEach((snake) => {
+      const copy = new Snake(this.TILECOUNT, this.frames, this.generation, snake.brain.copy())
+      copy.brain.snake = copy
+      nextGeneration.push(copy)
+      console.log(snake.score)
     })
+
+    for (let i = 0; i < this.POPULATION_SIZE - this.ELITISM_SIZE; i++) {
+      const parentA = this.tournament()
+      const parentB = this.tournament()
+
+      const childBrain = parentA.brain.crossover(parentB.brain)
+      childBrain.mutate(this.MUTATION_RATE)
+
+      const newSnake = new Snake(this.TILECOUNT, this.frames, this.generation, childBrain)
+      newSnake.brain.snake = newSnake
+      nextGeneration.push(newSnake)
+    }
+
+    this.players = nextGeneration
+  }
+  checkAllDead() {
+    const check = this.players.every((snake) => {
+      return snake.dead === true
+    })
+    if (check) {
+      this.nextGeneration()
+    }
   }
   start() {
     this.frames.animationFrame = window.requestAnimationFrame((currentFrame) => {
@@ -76,6 +122,8 @@ export default class Game {
       player.moveTick()
       player.eat()
     })
+
+    this.checkAllDead()
 
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height)
 
