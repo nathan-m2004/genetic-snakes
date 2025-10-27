@@ -203,7 +203,6 @@ export default class Brain {
     input.push(this.snake.plant.position.x, this.snake.plant.position.y)
     input.push(...this.checkDirections())
 
-    console.log(input)
     let output = this.neuralnetwork.feedForward(input)
     if (output[0]! > 0.5) {
       return // go straigth

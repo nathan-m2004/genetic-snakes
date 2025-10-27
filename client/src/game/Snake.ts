@@ -22,7 +22,7 @@ export default class Snake {
   frames: Frames
   times: { timeSinceLastMove: number; timeToMove: number }
   players: any
-  constructor(TILECOUNT: number, frames: Frames) {
+  constructor(TILECOUNT: number, frames: Frames, gametick: number) {
     this.TILECOUNT = TILECOUNT
 
     this.direction = { x: 1, y: 0, str: 'right' }
@@ -36,7 +36,7 @@ export default class Snake {
 
     this.times = {
       timeSinceLastMove: 0,
-      timeToMove: 0.3,
+      timeToMove: gametick,
     }
     this.plant = new Plant(this.TILECOUNT)
 
