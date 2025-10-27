@@ -21,11 +21,14 @@ export default class Game {
   renderCanvas: HTMLCanvasElement
   renderCanvasContext: CanvasRenderingContext2D
   POPULATION_SIZE: number
+  globalOpacity: number
   constructor(canvas: HTMLCanvasElement) {
     this.TILECOUNT = 10
     this.INTERNAL_WIDTH = 800
     this.INTERNAL_HEIGHT = 800
     this.POPULATION_SIZE = 1000
+
+    this.globalOpacity = 0.5
 
     this.renderCanvas = canvas
     this.renderCanvasContext = this.renderCanvas.getContext('2d') as CanvasRenderingContext2D
@@ -35,7 +38,7 @@ export default class Game {
     this.canvas.width = this.INTERNAL_WIDTH
     this.canvas.height = this.INTERNAL_HEIGHT
     this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D
-    this.frames = { animationFrame: 0, currentFrame: 0, lastFrame: 0, deltaTime: 0, gameTick: 0.5 }
+    this.frames = { animationFrame: 0, currentFrame: 0, lastFrame: 0, deltaTime: 0, gameTick: 0.8 }
 
     this.players = []
     for (let i = 0; i < this.POPULATION_SIZE; i++) {
@@ -80,9 +83,10 @@ export default class Game {
 
     this.players.forEach((player) => {
       this.context.save()
-      this.context.globalAlpha = 0.5
-      player.draw(this.canvas, this.context)
-      player.plant.draw(this.canvas, this.context)
+      player.draw(this.canvas, this.context, this.globalOpacity)
+      if (!player.dead) {
+        player.plant.draw(this.canvas, this.context)
+      }
       this.context.restore()
     })
 

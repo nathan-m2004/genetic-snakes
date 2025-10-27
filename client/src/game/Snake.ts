@@ -25,8 +25,11 @@ export default class Snake {
     timeToMove: number
     timeSinceLastEat: number
     timeToDie: number
+    timeSinceDead: number
+    timeToDesapear: number
   }
   players: any
+  opacity: number
   constructor(TILECOUNT: number, frames: Frames) {
     this.TILECOUNT = TILECOUNT
 
@@ -44,8 +47,11 @@ export default class Snake {
       timeToMove: 0.1,
       timeSinceLastEat: 0,
       timeToDie: 10,
+      timeSinceDead: 0,
+      timeToDesapear: 2,
     }
     this.plant = new Plant(this.TILECOUNT)
+    this.opacity = 1
 
     this.color = `hsl(${getRandomInt(0, 360)}, ${getRandomInt(0, 45)}%, ${getRandomInt(0, 60)}%)`
     this.eyes = {
@@ -166,7 +172,18 @@ export default class Snake {
     this.rotated = true
   }
 
-  draw(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
+  draw(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D, globalOpacity: number) {
+    this.opacity = globalOpacity
+    if (this.dead && this.times.timeSinceDead <= this.times.timeToDesapear) {
+      this.times.timeSinceDead += this.frames.deltaTime
+      const fadeProgress = this.times.timeSinceDead / this.times.timeToDesapear
+      this.opacity = Math.max(0, globalOpacity - fadeProgress)
+    } else if (this.dead) {
+      return
+    }
+
+    context.globalAlpha = this.opacity
+
     const xSize = canvas.width / this.TILECOUNT
     const ySize = canvas.height / this.TILECOUNT
 
@@ -183,11 +200,14 @@ export default class Snake {
       const y = position.y * ySize
 
       context.fillStyle = this.color
+      if (this.dead) {
+        context.fillStyle = 'black'
+      }
       context.fillRect(x, y, xSize, ySize)
 
       const segmentInFront = arr[index - 1]
 
-      if (segmentInFront && position.direction !== segmentInFront.direction) {
+      if (segmentInFront && position.direction !== segmentInFront.direction && !this.dead) {
         // --- This is a CORNER segment ---
         const currentDir = position.direction
         const nextDir = segmentInFront.direction
@@ -261,7 +281,7 @@ export default class Snake {
           context.fillRect(x, y, edgeSize, ySize)
           context.fillRect(x + edgeSize, y + ySize - edgeSize, xSize - edgeSize, edgeSize)
         }
-      } else {
+      } else if (!this.dead) {
         // --- This is a STRAIGHT segment (or the head) ---
         // (This logic remains the same)
         switch (position.direction) {
