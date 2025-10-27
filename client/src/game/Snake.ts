@@ -20,9 +20,14 @@ export default class Snake {
   rotated: boolean
   brain: Brain
   frames: Frames
-  times: { timeSinceLastMove: number; timeToMove: number }
+  times: {
+    timeSinceLastMove: number
+    timeToMove: number
+    timeSinceLastEat: number
+    timeToDie: number
+  }
   players: any
-  constructor(TILECOUNT: number, frames: Frames, gametick: number) {
+  constructor(TILECOUNT: number, frames: Frames) {
     this.TILECOUNT = TILECOUNT
 
     this.direction = { x: 1, y: 0, str: 'right' }
@@ -36,7 +41,9 @@ export default class Snake {
 
     this.times = {
       timeSinceLastMove: 0,
-      timeToMove: gametick,
+      timeToMove: 0.1,
+      timeSinceLastEat: 0,
+      timeToDie: 10,
     }
     this.plant = new Plant(this.TILECOUNT)
 
@@ -56,10 +63,12 @@ export default class Snake {
       this.plant.position.x !== this.positions[0]?.x ||
       this.plant.position.y !== this.positions[0]?.y
     ) {
+      this.times.timeSinceLastEat += this.frames.deltaTime
       return
     }
 
     this.score++
+    this.times.timeSinceLastEat = 0
     this.positions.push(this.lastPosition)
 
     let overlaps: boolean
@@ -73,7 +82,7 @@ export default class Snake {
   }
   moveTick() {
     this.times.timeSinceLastMove += this.frames.deltaTime
-    if (this.times.timeSinceLastMove >= this.times.timeToMove) {
+    if (this.times.timeSinceLastMove >= this.times.timeToMove * this.frames.gameTick) {
       if (this.dead) return
       this.times.timeSinceLastMove = 0
       this.brain.think()
@@ -126,6 +135,10 @@ export default class Snake {
         this.dead = true
         return
       }
+    }
+
+    if (this.times.timeSinceLastEat >= this.times.timeToDie * this.frames.gameTick) {
+      this.dead = true
     }
   }
   right() {

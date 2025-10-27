@@ -6,6 +6,7 @@ export type Frames = {
   currentFrame: number
   lastFrame: number
   deltaTime: number
+  gameTick: number
 }
 
 export default class Game {
@@ -20,13 +21,11 @@ export default class Game {
   renderCanvas: HTMLCanvasElement
   renderCanvasContext: CanvasRenderingContext2D
   POPULATION_SIZE: number
-  GAME_TICK: number
   constructor(canvas: HTMLCanvasElement) {
     this.TILECOUNT = 10
     this.INTERNAL_WIDTH = 800
     this.INTERNAL_HEIGHT = 800
     this.POPULATION_SIZE = 1000
-    this.GAME_TICK = 0.01
 
     this.renderCanvas = canvas
     this.renderCanvasContext = this.renderCanvas.getContext('2d') as CanvasRenderingContext2D
@@ -36,11 +35,11 @@ export default class Game {
     this.canvas.width = this.INTERNAL_WIDTH
     this.canvas.height = this.INTERNAL_HEIGHT
     this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D
-    this.frames = { animationFrame: 0, currentFrame: 0, lastFrame: 0, deltaTime: 0 }
+    this.frames = { animationFrame: 0, currentFrame: 0, lastFrame: 0, deltaTime: 0, gameTick: 0.5 }
 
     this.players = []
     for (let i = 0; i < this.POPULATION_SIZE; i++) {
-      this.players.push(new Snake(this.TILECOUNT, this.frames, this.GAME_TICK))
+      this.players.push(new Snake(this.TILECOUNT, this.frames))
     }
     this.tiles = new Tiles(this.canvas, this.context, this.TILECOUNT)
     this.tiles.calculateTiles()
