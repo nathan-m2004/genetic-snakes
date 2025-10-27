@@ -1,0 +1,64 @@
+/* Custom color palette 
+  "A dark forest with a full moon in the background"
+  (Modified: less luminance, less contrast)
+*/
+:root {
+  --c-deep-forest: hsla(196, 40%, 7%, 1); /* Unchanged, already dark */
+  --c-shadow: hsla(191, 30%, 12%, 1); /* Was: 18% */
+  --c-text-muted: hsla(185, 20%, 25%, 1); /* Was: 35% */
+  --c-text-bright: hsla(185, 20%, 35%, 1); /* Was: 55% */
+  --c-night-sky: hsla(0, 0%, 4%, 1); /* Unchanged, already dark */
+}
+
+/* Semantic color variables for this project
+  Mapped to the dark forest theme
+*/
+:root {
+  --color-background: var(--c-night-sky);
+  --color-background-soft: var(--c-deep-forest);
+  --color-background-mute: var(--c-shadow);
+
+  --color-border: var(--c-shadow);
+  --color-border-hover: var(--c-text-muted);
+
+  --color-heading: var(--c-text-bright);
+  --color-text: var(--c-text-muted); /* Muted for body, bright for headings */
+
+  --section-gap: 160px;
+}
+
+/* Base styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  font-weight: normal;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--color-text);
+  background: var(--color-background);
+  transition:
+    color 0.5s,
+    background-color 0.5s;
+  line-height: 1.6;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    'Fira Sans',
+    'Droid Sans',
+    'Helvetica Neue',
+    sans-serif;
+  font-size: 15px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
