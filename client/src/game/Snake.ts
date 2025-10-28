@@ -1,4 +1,5 @@
 import Brain from './Brain'
+import type Game from './main'
 import type { Frames } from './main'
 import Plant from './Plant'
 import getRandomInt from './utils'
@@ -23,7 +24,7 @@ export default class Snake {
   times: {
     timeSinceLastMove: number
     timeToMove: number
-    timeSinceLastEat: number
+    stepsSinceLastEat: number
     timeToDie: number
     timeSinceDead: number
     timeToDesapear: number
@@ -36,13 +37,16 @@ export default class Snake {
   PENALTY_MOVE_FARTHER: number
   PENALTY_DIE: number
   REWARD_ALIVE: number
-  constructor(TILECOUNT: number, frames: Frames, seed: number, brain?: Brain) {
+  PENALTY_STARVE: number
+  game: Game
+  constructor(TILECOUNT: number, frames: Frames, seed: number, game: Game, brain?: Brain) {
     this.TILECOUNT = TILECOUNT
-    this.REWARD_EAT_PLANT = 700
+    this.REWARD_EAT_PLANT = 1
     this.REWARD_MOVE_CLOSER = 0
     this.PENALTY_MOVE_FARTHER = 0
-    this.REWARD_ALIVE = 1
-    this.PENALTY_DIE = 100
+    this.REWARD_ALIVE = 0.1
+    this.PENALTY_DIE = 0
+    this.PENALTY_STARVE = 0
 
     this.direction = { x: 1, y: 0, str: 'right' }
     this.positions = [
@@ -57,12 +61,13 @@ export default class Snake {
     this.times = {
       timeSinceLastMove: 0,
       timeToMove: 0.1,
-      timeSinceLastEat: 0,
-      timeToDie: 10,
+      stepsSinceLastEat: 0,
+      timeToDie: 30,
       timeSinceDead: 0,
       timeToDesapear: 2,
     }
-    this.plant = new Plant(this.TILECOUNT, seed)
+    this.game = game
+    this.plant = new Plant(this.TILECOUNT, seed, this.game, this)
     this.opacity = 1
 
     this.color = `hsl(${getRandomInt(0, 360)}, ${getRandomInt(0, 45)}%, ${getRandomInt(0, 60)}%)`
@@ -85,12 +90,11 @@ export default class Snake {
       this.plant.position.x !== this.positions[0]?.x ||
       this.plant.position.y !== this.positions[0]?.y
     ) {
-      this.times.timeSinceLastEat += this.frames.deltaTime
       return
     }
 
     this.score += this.REWARD_EAT_PLANT
-    this.times.timeSinceLastEat = 0
+    this.times.stepsSinceLastEat = 0
     this.positions.push(this.lastPosition)
 
     let overlaps: boolean
@@ -102,11 +106,13 @@ export default class Snake {
       )
     } while (overlaps)
   }
-  moveTick() {
+  moveTick(noDraw?: boolean) {
     this.times.timeSinceLastMove += this.frames.deltaTime
-    if (this.times.timeSinceLastMove >= this.times.timeToMove * this.frames.gameTick) {
+    const check = noDraw ? 0 : this.times.timeToMove * this.frames.gameTick
+    if (this.times.timeSinceLastMove >= check) {
       if (this.dead) return
       this.times.timeSinceLastMove = 0
+      this.times.stepsSinceLastEat++
       this.score += this.REWARD_ALIVE
       this.brain.think()
       this.move()
@@ -172,8 +178,8 @@ export default class Snake {
       }
     }
 
-    if (this.times.timeSinceLastEat >= this.times.timeToDie * this.frames.gameTick) {
-      this.score -= this.PENALTY_DIE
+    if (this.times.stepsSinceLastEat > this.times.timeToDie) {
+      this.score -= this.PENALTY_STARVE
       this.dead = true
     }
   }

@@ -30,7 +30,6 @@ export default class Game {
     this.TILECOUNT = 10
     this.INTERNAL_WIDTH = 800
     this.INTERNAL_HEIGHT = 800
-    this.POPULATION_SIZE = 1000
 
     this.renderCanvas = canvas
     this.renderCanvasContext = this.renderCanvas.getContext('2d') as CanvasRenderingContext2D
@@ -50,12 +49,13 @@ export default class Game {
     this.tiles.calculateTiles()
 
     this.generation = 1
-    this.TOURNAMENT_SIZE = 200
-    this.ELITISM_SIZE = 10
-    this.MUTATION_RATE = 0.02
+    this.POPULATION_SIZE = 1000
+    this.TOURNAMENT_SIZE = 5
+    this.ELITISM_SIZE = this.POPULATION_SIZE * 0.1
+    this.MUTATION_RATE = 0.05
 
     for (let i = 0; i < this.POPULATION_SIZE; i++) {
-      this.players.push(new Snake(this.TILECOUNT, this.frames, this.generation))
+      this.players.push(new Snake(this.TILECOUNT, this.frames, this.generation, this))
     }
   }
   tournament() {
@@ -77,7 +77,7 @@ export default class Game {
     // ELITISM
     const elitism = this.players.slice(0, this.ELITISM_SIZE)
     elitism.forEach((snake) => {
-      const copy = new Snake(this.TILECOUNT, this.frames, this.generation, snake.brain.copy())
+      const copy = new Snake(this.TILECOUNT, this.frames, this.generation, this, snake.brain.copy())
       copy.brain.snake = copy
       nextGeneration.push(copy)
       console.log(snake.score)
@@ -90,7 +90,7 @@ export default class Game {
       const childBrain = parentA.brain.crossover(parentB.brain)
       childBrain.mutate(this.MUTATION_RATE)
 
-      const newSnake = new Snake(this.TILECOUNT, this.frames, this.generation, childBrain)
+      const newSnake = new Snake(this.TILECOUNT, this.frames, this.generation, this, childBrain)
       newSnake.brain.snake = newSnake
       nextGeneration.push(newSnake)
     }
@@ -106,13 +106,30 @@ export default class Game {
     }
   }
   start() {
+    window.cancelAnimationFrame(this.frames.animationFrame)
     this.frames.animationFrame = window.requestAnimationFrame((currentFrame) => {
       this.frames.currentFrame = currentFrame
       this.draw()
     })
   }
   stop() {
-    this.frames.animationFrame = 0
+    window.cancelAnimationFrame(this.frames.animationFrame)
+  }
+  runWithNoDraw() {
+    this.frames.deltaTime = (this.frames.currentFrame - this.frames.lastFrame) / 1000
+    this.frames.lastFrame = this.frames.currentFrame
+
+    this.players.forEach((player) => {
+      player.moveTick(true)
+      player.eat()
+    })
+
+    this.checkAllDead()
+
+    this.frames.animationFrame = window.requestAnimationFrame((currentFrame) => {
+      this.frames.currentFrame = currentFrame
+      this.runWithNoDraw()
+    })
   }
   draw() {
     this.frames.deltaTime = (this.frames.currentFrame - this.frames.lastFrame) / 1000
