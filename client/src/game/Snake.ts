@@ -44,7 +44,7 @@ export default class Snake {
     this.REWARD_EAT_PLANT = 1
     this.REWARD_MOVE_CLOSER = 0
     this.PENALTY_MOVE_FARTHER = 0
-    this.REWARD_ALIVE = 0.1
+    this.REWARD_ALIVE = 0.01
     this.PENALTY_DIE = 0
     this.PENALTY_STARVE = 0
 

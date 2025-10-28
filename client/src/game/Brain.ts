@@ -12,16 +12,21 @@ class NeuralNetwork {
   hiddenNode1: any
   weights_hh: Matrix
   bias_h1: Matrix
+  previous: number[]
   constructor(inputNode: number, hiddenNode0: number, hiddenNode1: number, outputNode: number) {
     this.inputNode = inputNode
     this.hiddenNode0 = hiddenNode0
     this.hiddenNode1 = hiddenNode1
     this.outputNode = outputNode
 
+    const realInputSize = inputNode + outputNode
+
+    this.previous = new Array(this.outputNode).fill(0)
+
     this.bias_h0 = new Matrix(this.hiddenNode0, 1)
     this.bias_h1 = new Matrix(this.hiddenNode1, 1)
     this.bias_o = new Matrix(this.outputNode, 1)
-    this.weights_ih = new Matrix(this.hiddenNode0, this.inputNode)
+    this.weights_ih = new Matrix(this.hiddenNode0, realInputSize)
     this.weights_hh = new Matrix(this.hiddenNode1, this.hiddenNode0)
     this.weights_ho = new Matrix(this.outputNode, this.hiddenNode1)
     this.bias_h0.randomize()
@@ -153,7 +158,7 @@ class NeuralNetwork {
     return child
   }
   feedForward(inputArray: number[]) {
-    let inputs = Matrix.fromArray(inputArray)
+    let inputs = Matrix.fromArray([...inputArray, ...this.previous])
 
     let hidden0 = Matrix.multiply(this.weights_ih, inputs)
     hidden0!.add(this.bias_h0)
@@ -167,7 +172,9 @@ class NeuralNetwork {
     output!.add(this.bias_o)
     output!.sigmoid()
 
-    return output!.toArray()
+    const outputArray = output!.toArray()
+    this.previous = outputArray
+    return outputArray
   }
   copy(): NeuralNetwork {
     const copy = new NeuralNetwork(

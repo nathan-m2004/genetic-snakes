@@ -50,8 +50,8 @@ export default class Game {
 
     this.generation = 1
     this.POPULATION_SIZE = 1000
-    this.TOURNAMENT_SIZE = 5
-    this.ELITISM_SIZE = this.POPULATION_SIZE * 0.1
+    this.TOURNAMENT_SIZE = 10
+    this.ELITISM_SIZE = 5
     this.MUTATION_RATE = 0.05
 
     for (let i = 0; i < this.POPULATION_SIZE; i++) {
