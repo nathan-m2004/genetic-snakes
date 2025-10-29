@@ -60,10 +60,24 @@ export default class Matrix {
    * @param array - The input array.
    * @returns A new Matrix (n x 1).
    */
-  static fromArray(array: number[]): Matrix {
-    let matrix = new Matrix(array.length, 1)
-    for (let r = 0; r < array.length; r++) {
-      matrix.data[r]![0] = array[r]!
+  static fromArray(array: number[], rows?: number, cols?: number): Matrix {
+    // Your original logic for dimensions
+    let numRows = rows ? rows : array.length
+    let numCols = cols ? cols : 1
+
+    // Add a check to ensure the dimensions match the array length
+    if (array.length !== numRows * numCols) {
+      throw new Error('Array length does not match the specified dimensions (rows * cols).')
+    }
+
+    let matrix = new Matrix(numRows, numCols)
+    for (let r = 0; r < numRows; r++) {
+      for (let c = 0; c < numCols; c++) {
+        // --- THIS IS THE FIX ---
+        // Calculate the 1D array index from the 2D matrix coordinates
+        const index = r * numCols + c
+        matrix.data[r]![c] = array[index]!
+      }
     }
     return matrix
   }

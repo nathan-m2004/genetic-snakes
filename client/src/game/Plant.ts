@@ -7,13 +7,8 @@ export default class Plant {
   seededGenerator: SeededRandom
   position: { x: number; y: number }
   color: string
-  game: Game
-  snake: Snake
-  constructor(TILECOUNT: number, seed: number, game: Game, snake: Snake) {
+  constructor(TILECOUNT: number, seed: number) {
     this.TILECOUNT = TILECOUNT
-
-    this.game = game
-    this.snake = snake
 
     this.seededGenerator = new SeededRandom(seed)
     this.position = {

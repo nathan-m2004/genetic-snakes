@@ -32,6 +32,9 @@ export default class Game {
   replayPlayers: Snake[]
   runNoDraw: boolean
   currentBestScore: number
+  exportCanvas: HTMLCanvasElement
+  exportCanvasContext: CanvasRenderingContext2D
+  saveGeneration: boolean
   constructor(canvas: HTMLCanvasElement) {
     this.TILECOUNT = 10
     this.INTERNAL_WIDTH = 800
@@ -47,6 +50,12 @@ export default class Game {
     this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D
     this.context.imageSmoothingEnabled = false
 
+    this.exportCanvas = document.createElement('canvas')
+    this.exportCanvas.width = this.INTERNAL_WIDTH
+    this.exportCanvas.height = this.INTERNAL_HEIGHT
+    this.exportCanvasContext = this.exportCanvas.getContext('2d') as CanvasRenderingContext2D
+    this.exportCanvasContext.imageSmoothingEnabled = false
+
     this.frames = { animationFrame: 0, currentFrame: 0, lastFrame: 0, deltaTime: 0, gameTick: 0.8 }
     this.globalOpacity = 0.5
 
@@ -55,7 +64,7 @@ export default class Game {
     this.tiles.calculateTiles()
 
     this.generation = 1
-    this.POPULATION_SIZE = 1500
+    this.POPULATION_SIZE = 1000
     this.TOURNAMENT_SIZE = 150
     this.ELITISM_SIZE = 20
     this.MUTATION_RATE = 0.002
@@ -69,8 +78,10 @@ export default class Game {
 
     this.runNoDraw = false
 
+    this.saveGeneration = true
+
     for (let i = 0; i < this.POPULATION_SIZE; i++) {
-      this.players.push(new Snake(this.TILECOUNT, this.frames, this.generation, this))
+      this.players.push(new Snake(this.TILECOUNT, this.frames, this.generation))
     }
   }
   tournament() {
@@ -84,17 +95,31 @@ export default class Game {
     }
     return best!
   }
+  saveSnakeFiles() {
+    this.players.forEach((player, index) => {
+      const objects = player.save(
+        index,
+        this.generation - 1,
+        this.renderCanvas,
+        this.renderCanvasContext,
+      )
+    })
+  }
   nextGeneration() {
     this.generation++
     this.players.sort((a, b) => b.fitness - a.fitness)
     let nextGeneration: Snake[] = []
+
+    if (this.saveGeneration) {
+      this.saveSnakeFiles()
+    }
 
     this.currentBestScore = this.players[0]!.score
 
     // ELITISM
     const elitism = this.players.slice(0, this.ELITISM_SIZE)
     elitism.forEach((snake) => {
-      const copy = new Snake(this.TILECOUNT, this.frames, this.generation, this, snake.brain.copy())
+      const copy = new Snake(this.TILECOUNT, this.frames, this.generation, snake.brain.copy())
       copy.brain.snake = copy
       nextGeneration.push(copy)
       console.log(snake.fitness)
@@ -107,7 +132,7 @@ export default class Game {
       const childBrain = parentA.brain.crossover(parentB.brain)
       childBrain.mutate(this.MUTATION_RATE)
 
-      const newSnake = new Snake(this.TILECOUNT, this.frames, this.generation, this, childBrain)
+      const newSnake = new Snake(this.TILECOUNT, this.frames, this.generation, childBrain)
       newSnake.brain.snake = newSnake
       nextGeneration.push(newSnake)
     }
@@ -178,7 +203,7 @@ export default class Game {
     const replayPlayers: Snake[] = []
     const best = this.players.slice(0, this.best_size)
     best.forEach((snake) => {
-      const copy = new Snake(this.TILECOUNT, this.frames, this.generation, this, snake.brain.copy())
+      const copy = new Snake(this.TILECOUNT, this.frames, this.generation, snake.brain.copy())
       copy.brain.snake = copy
       replayPlayers.push(copy)
       console.log(snake.fitness)

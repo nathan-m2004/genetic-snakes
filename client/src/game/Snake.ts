@@ -17,7 +17,7 @@ export default class Snake {
   color: string
   plant: Plant
   score: number
-  eyes: { color: string; type: string }
+  eyes: { color: string }
   rotated: boolean
   brain: Brain
   frames: Frames
@@ -38,10 +38,9 @@ export default class Snake {
   PENALTY_DIE: number
   REWARD_ALIVE: number
   PENALTY_STARVE: number
-  game: Game
   fitness: number
   lifetime: number
-  constructor(TILECOUNT: number, frames: Frames, seed: number, game: Game, brain?: Brain) {
+  constructor(TILECOUNT: number, frames: Frames, seed: number, brain?: Brain) {
     this.TILECOUNT = TILECOUNT
     this.REWARD_EAT_PLANT = 1
     this.REWARD_MOVE_CLOSER = 0
@@ -68,14 +67,12 @@ export default class Snake {
       timeSinceDead: 0,
       timeToDesapear: 2,
     }
-    this.game = game
-    this.plant = new Plant(this.TILECOUNT, seed, this.game, this)
+    this.plant = new Plant(this.TILECOUNT, seed)
     this.opacity = 1
 
     this.color = `hsl(${getRandomInt(0, 360)}, ${getRandomInt(0, 45)}%, ${getRandomInt(0, 60)}%)`
     this.eyes = {
       color: `hsl(${getRandomInt(0, 360)}, ${getRandomInt(0, 45)}%, ${getRandomInt(0, 60)}%)`,
-      type: `normal`,
     }
 
     this.rotated = false
@@ -88,6 +85,70 @@ export default class Snake {
     } else {
       this.brain = new Brain(this)
     }
+  }
+  save(
+    position: number,
+    generation: number,
+    exportCanvas: HTMLCanvasElement,
+    exportCanvasContext: CanvasRenderingContext2D,
+  ) {
+    const number = position + generation * 1000
+    const mainFile = {
+      name: `Snake #${number}`,
+      symbol: 'SNAKE',
+      image: `https://nathan-m2004.github.io/REPO/nfts/gen${generation}/${number}.png`,
+      properties: {
+        files: [
+          {
+            uri: `https://nathan-m2004.github.io/REPO/nfts/gen${generation}/${number}.png`,
+            type: `image/png`,
+          },
+          {
+            uri: `https://nathan-m2004.github.io/YOUR_REPO/gen${generation}/${number}_brain.json`,
+            type: 'application/json',
+            purpose: 'brain_weights',
+          },
+        ],
+        creators: [
+          {
+            address: 'kqsqPSAFxeqm8LWRYaPznTeQSu32Ejq8sxtBp1ehEpR',
+            share: 10,
+          },
+        ],
+        attributes: [
+          {
+            trait_type: 'Fitness',
+            value: this.fitness,
+          },
+          {
+            trait_type: 'Score',
+            value: this.score,
+          },
+          {
+            trait_type: 'Color',
+            value: this.color,
+          },
+          {
+            trait_type: 'Eye Color',
+            value: this.eyes.color,
+          },
+        ],
+      },
+    }
+
+    const brain = {
+      weights_ih: this.brain.neuralnetwork.weights_ih.toArray(),
+      weights_hh: this.brain.neuralnetwork.weights_hh.toArray(),
+      weights_ho: this.brain.neuralnetwork.weights_ho.toArray(),
+      bias_h0: this.brain.neuralnetwork.bias_h0.toArray(),
+      bias_h1: this.brain.neuralnetwork.bias_h1.toArray(),
+      bias_o: this.brain.neuralnetwork.bias_o.toArray(),
+    }
+
+    // TODO: RENDER SNAKE IMAGE
+    exportCanvasContext.clearRect(0, 0, exportCanvas.width, exportCanvas.height)
+
+    return [mainFile, brain]
   }
   eat() {
     if (
