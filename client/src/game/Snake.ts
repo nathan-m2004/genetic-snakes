@@ -2,6 +2,7 @@ import Brain from './Brain'
 import type Game from './main'
 import type { Frames } from './main'
 import Plant from './Plant'
+import Tiles from './Tiles'
 import getRandomInt from './utils'
 
 export type Position = { x: number; y: number; direction: string }
@@ -86,13 +87,13 @@ export default class Snake {
       this.brain = new Brain(this)
     }
   }
-  save(
+  async save(
     position: number,
     generation: number,
     exportCanvas: HTMLCanvasElement,
     exportCanvasContext: CanvasRenderingContext2D,
   ) {
-    const number = position + generation * 1000
+    const number = position + (generation - 1) * 1000
     const mainFile = {
       name: `Snake #${number}`,
       symbol: 'SNAKE',
@@ -146,9 +147,56 @@ export default class Snake {
     }
 
     // TODO: RENDER SNAKE IMAGE
-    exportCanvasContext.clearRect(0, 0, exportCanvas.width, exportCanvas.height)
+    this.dead = false
 
-    return [mainFile, brain]
+    exportCanvasContext.clearRect(0, 0, exportCanvas.width, exportCanvas.height)
+    const tiles = new Tiles(exportCanvas, exportCanvasContext, this.TILECOUNT)
+    tiles.calculateTiles()
+
+    const xSize = exportCanvas.width / this.TILECOUNT
+    const ySize = exportCanvas.height / this.TILECOUNT
+
+    // 2. Get the snake head's position in pixels
+    const headX = this.positions[0]!.x * xSize
+    const headY = this.positions[0]!.y * ySize
+
+    const canvasXCenter = exportCanvas.width / 2
+    const canvasYCenter = exportCanvas.height / 2
+
+    exportCanvasContext.fillStyle = 'black'
+    exportCanvasContext.fillRect(0, 0, exportCanvas.width, exportCanvas.height)
+
+    exportCanvasContext.save()
+    exportCanvasContext.translate(canvasXCenter, canvasYCenter)
+    exportCanvasContext.scale(2, 2)
+    exportCanvasContext.translate(-headX, -headY)
+    tiles.draw()
+    this.draw(exportCanvas, exportCanvasContext, 1)
+    exportCanvasContext.restore()
+
+    // 2. Set the text style
+    exportCanvasContext.font = '58px Arial'
+    exportCanvasContext.fillStyle = 'white' // Color that shows up on your black bg
+
+    // 3. Set alignment for easy positioning
+    exportCanvasContext.textAlign = 'right' // Aligns the end of the text
+    exportCanvasContext.textBaseline = 'top' // Aligns the top of the text
+
+    // 4. Draw the text in the top-right corner (with 10px padding)
+    exportCanvasContext.fillText(`#${number}`, exportCanvas.width - 10, 10)
+
+    this.dead = true
+
+    const pngBlob = await new Promise<Blob | null>((resolve) => {
+      exportCanvas.toBlob(resolve, 'image/png')
+    })
+
+    if (!pngBlob) {
+      // Handle the case where blob creation failed
+      throw new Error('Failed to create PNG blob from canvas.')
+    }
+
+    return [mainFile, brain, pngBlob]
   }
   eat() {
     if (

@@ -16,6 +16,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "jszip": "^3.10.1",
     "vue": "^3.5.22"
   },
   "devDependencies": {

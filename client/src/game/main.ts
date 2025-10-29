@@ -1,3 +1,4 @@
+import JSZip from 'jszip'
 import Snake from './Snake'
 import Tiles from './Tiles'
 
@@ -35,6 +36,9 @@ export default class Game {
   exportCanvas: HTMLCanvasElement
   exportCanvasContext: CanvasRenderingContext2D
   saveGeneration: boolean
+  zip: JSZip
+  generationsToSave: number
+  isProcessingGeneration: boolean
   constructor(canvas: HTMLCanvasElement) {
     this.TILECOUNT = 10
     this.INTERNAL_WIDTH = 800
@@ -79,6 +83,9 @@ export default class Game {
     this.runNoDraw = false
 
     this.saveGeneration = true
+    this.generationsToSave = 10
+    this.isProcessingGeneration = false
+    this.zip = new JSZip()
 
     for (let i = 0; i < this.POPULATION_SIZE; i++) {
       this.players.push(new Snake(this.TILECOUNT, this.frames, this.generation))
@@ -95,23 +102,51 @@ export default class Game {
     }
     return best!
   }
-  saveSnakeFiles() {
-    this.players.forEach((player, index) => {
-      const objects = player.save(
+  async saveSnakeFiles() {
+    if (this.generation + 1 > this.generationsToSave) return
+    this.isProcessingGeneration = true
+    const savePromise = this.players.map(async (player, index) => {
+      const [mainFile, brain, pngBlob] = await player.save(
         index,
         this.generation - 1,
         this.renderCanvas,
         this.renderCanvasContext,
       )
+
+      this.zip.file(`gen${this.generation - 1}/${index}.json`, JSON.stringify(mainFile))
+      this.zip.file(`gen${this.generation - 1}/${index}_brain.json`, JSON.stringify(brain))
+      if (typeof pngBlob !== 'undefined' && pngBlob !== null) {
+        this.zip.file(`gen${this.generation - 1}/${index}.png`, pngBlob as Blob)
+      }
     })
+
+    await Promise.all(savePromise)
+
+    if (this.generation + 1 === this.generationsToSave) {
+      const generationsToSave = this.generationsToSave
+      this.zip.generateAsync({ type: 'blob' }).then(function (content) {
+        // 5. Create a download link and trigger the download
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(content)
+        link.download = `GeneticSnakes_Generations_0-${generationsToSave}.zip`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      })
+    }
+
+    this.isProcessingGeneration = false
   }
-  nextGeneration() {
+  async nextGeneration() {
+    if (this.isProcessingGeneration) {
+      return
+    }
     this.generation++
     this.players.sort((a, b) => b.fitness - a.fitness)
     let nextGeneration: Snake[] = []
 
     if (this.saveGeneration) {
-      this.saveSnakeFiles()
+      await this.saveSnakeFiles()
     }
 
     this.currentBestScore = this.players[0]!.score
