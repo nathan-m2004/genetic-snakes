@@ -39,13 +39,15 @@ export default class Snake {
   REWARD_ALIVE: number
   PENALTY_STARVE: number
   game: Game
+  fitness: number
+  lifetime: number
   constructor(TILECOUNT: number, frames: Frames, seed: number, game: Game, brain?: Brain) {
     this.TILECOUNT = TILECOUNT
     this.REWARD_EAT_PLANT = 1
     this.REWARD_MOVE_CLOSER = 0
     this.PENALTY_MOVE_FARTHER = 0
-    this.REWARD_ALIVE = 0.01
-    this.PENALTY_DIE = 0
+    this.REWARD_ALIVE = 0.2
+    this.PENALTY_DIE = 1
     this.PENALTY_STARVE = 0
 
     this.direction = { x: 1, y: 0, str: 'right' }
@@ -62,7 +64,7 @@ export default class Snake {
       timeSinceLastMove: 0,
       timeToMove: 0.1,
       stepsSinceLastEat: 0,
-      timeToDie: 30,
+      timeToDie: 100,
       timeSinceDead: 0,
       timeToDesapear: 2,
     }
@@ -79,6 +81,8 @@ export default class Snake {
     this.rotated = false
     this.dead = false
     this.score = 0
+    this.fitness = 0
+    this.lifetime = 0
     if (brain) {
       this.brain = brain
     } else {
@@ -113,6 +117,7 @@ export default class Snake {
       if (this.dead) return
       this.times.timeSinceLastMove = 0
       this.times.stepsSinceLastEat++
+      this.lifetime++
       this.score += this.REWARD_ALIVE
       this.brain.think()
       this.move()
@@ -156,6 +161,7 @@ export default class Snake {
 
     if (this.dead) {
       this.positions = oldPositions
+      this.fitness = this.lifetime + Math.pow(2, this.score) * 10
     }
   }
   checkDead() {

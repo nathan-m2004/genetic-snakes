@@ -26,6 +26,12 @@ export default class Game {
   TOURNAMENT_SIZE: number
   ELITISM_SIZE: number
   MUTATION_RATE: number
+  showBest: boolean
+  best_size: number
+  replay: boolean
+  replayPlayers: Snake[]
+  runNoDraw: boolean
+  currentBestScore: number
   constructor(canvas: HTMLCanvasElement) {
     this.TILECOUNT = 10
     this.INTERNAL_WIDTH = 800
@@ -49,10 +55,19 @@ export default class Game {
     this.tiles.calculateTiles()
 
     this.generation = 1
-    this.POPULATION_SIZE = 1000
-    this.TOURNAMENT_SIZE = 10
-    this.ELITISM_SIZE = 5
-    this.MUTATION_RATE = 0.05
+    this.POPULATION_SIZE = 1500
+    this.TOURNAMENT_SIZE = 150
+    this.ELITISM_SIZE = 20
+    this.MUTATION_RATE = 0.002
+
+    this.best_size = 1
+    this.replay = false
+    this.replayPlayers = []
+    this.showBest = false
+
+    this.currentBestScore = 0
+
+    this.runNoDraw = false
 
     for (let i = 0; i < this.POPULATION_SIZE; i++) {
       this.players.push(new Snake(this.TILECOUNT, this.frames, this.generation, this))
@@ -63,7 +78,7 @@ export default class Game {
     for (let i = 0; i < this.TOURNAMENT_SIZE; i++) {
       const randomSnake = this.players[Math.floor(Math.random() * this.POPULATION_SIZE)]
 
-      if (best === null || randomSnake!.score > best.score) {
+      if (best === null || randomSnake!.fitness > best.fitness) {
         best = randomSnake!
       }
     }
@@ -71,8 +86,10 @@ export default class Game {
   }
   nextGeneration() {
     this.generation++
-    this.players.sort((a, b) => b.score - a.score)
+    this.players.sort((a, b) => b.fitness - a.fitness)
     let nextGeneration: Snake[] = []
+
+    this.currentBestScore = this.players[0]!.score
 
     // ELITISM
     const elitism = this.players.slice(0, this.ELITISM_SIZE)
@@ -80,7 +97,7 @@ export default class Game {
       const copy = new Snake(this.TILECOUNT, this.frames, this.generation, this, snake.brain.copy())
       copy.brain.snake = copy
       nextGeneration.push(copy)
-      console.log(snake.score)
+      console.log(snake.fitness)
     })
 
     for (let i = 0; i < this.POPULATION_SIZE - this.ELITISM_SIZE; i++) {
@@ -101,15 +118,30 @@ export default class Game {
     const check = this.players.every((snake) => {
       return snake.dead === true
     })
-    if (check) {
+    if (check && !this.showBest) {
       this.nextGeneration()
+    } else if (check && this.showBest) {
+      if (this.replayPlayers.every((snake) => snake.dead === true)) {
+        if (this.replay === false && !this.runNoDraw) {
+          this.runBest()
+        } else {
+          this.replay = false
+          this.nextGeneration()
+        }
+      }
     }
   }
   start() {
     window.cancelAnimationFrame(this.frames.animationFrame)
     this.frames.animationFrame = window.requestAnimationFrame((currentFrame) => {
       this.frames.currentFrame = currentFrame
-      this.draw()
+      if (this.replay) {
+        this.drawReplay()
+      } else if (this.showBest || this.runNoDraw) {
+        this.runWithNoDraw()
+      } else {
+        this.drawRealTime()
+      }
     })
   }
   stop() {
@@ -128,10 +160,82 @@ export default class Game {
 
     this.frames.animationFrame = window.requestAnimationFrame((currentFrame) => {
       this.frames.currentFrame = currentFrame
-      this.runWithNoDraw()
+      if (this.replay) {
+        this.drawReplay()
+      } else if (this.showBest || this.runNoDraw) {
+        this.runWithNoDraw()
+      } else {
+        this.drawRealTime()
+      }
     })
   }
-  draw() {
+  sortBestSnake() {
+    return this.players.sort((a, b) => b.score - a.score)
+  }
+  runBest() {
+    this.replay = true
+    this.players.sort((a, b) => b.fitness - a.fitness)
+    const replayPlayers: Snake[] = []
+    const best = this.players.slice(0, this.best_size)
+    best.forEach((snake) => {
+      const copy = new Snake(this.TILECOUNT, this.frames, this.generation, this, snake.brain.copy())
+      copy.brain.snake = copy
+      replayPlayers.push(copy)
+      console.log(snake.fitness)
+    })
+    this.replayPlayers = replayPlayers
+    this.drawReplay()
+  }
+  drawReplay() {
+    this.frames.deltaTime = (this.frames.currentFrame - this.frames.lastFrame) / 1000
+    this.frames.lastFrame = this.frames.currentFrame
+
+    this.replayPlayers.forEach((player) => {
+      player.moveTick()
+      player.eat()
+    })
+
+    this.checkAllDead()
+
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height)
+
+    this.tiles.draw()
+
+    this.replayPlayers.forEach((player) => {
+      this.context.save()
+      player.draw(this.canvas, this.context, this.globalOpacity)
+      if (!player.dead) {
+        player.plant.draw(this.canvas, this.context)
+      }
+      this.context.restore()
+    })
+
+    this.renderCanvasContext.clearRect(0, 0, this.canvas.width, this.canvas.height)
+
+    this.renderCanvasContext.drawImage(
+      this.canvas,
+      0,
+      0,
+      this.INTERNAL_WIDTH,
+      this.INTERNAL_HEIGHT,
+      0,
+      0,
+      this.renderCanvas.width,
+      this.renderCanvas.height,
+    )
+
+    this.frames.animationFrame = window.requestAnimationFrame((currentFrame) => {
+      this.frames.currentFrame = currentFrame
+      if (this.replay) {
+        this.drawReplay()
+      } else if (this.showBest || this.runNoDraw) {
+        this.runWithNoDraw()
+      } else {
+        this.drawRealTime()
+      }
+    })
+  }
+  drawRealTime() {
     this.frames.deltaTime = (this.frames.currentFrame - this.frames.lastFrame) / 1000
     this.frames.lastFrame = this.frames.currentFrame
 
@@ -171,7 +275,13 @@ export default class Game {
 
     this.frames.animationFrame = window.requestAnimationFrame((currentFrame) => {
       this.frames.currentFrame = currentFrame
-      this.draw()
+      if (this.replay) {
+        this.drawReplay()
+      } else if (this.showBest || this.runNoDraw) {
+        this.runWithNoDraw()
+      } else {
+        this.drawRealTime()
+      }
     })
   }
 }

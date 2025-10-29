@@ -125,4 +125,51 @@ export default class Matrix {
       }
     }
   }
+
+  tanh() {
+    // If you use nested loops (assuming this.data is a 2D array):
+    for (let i = 0; i < this.rows; i++) {
+      for (let j = 0; j < this.cols; j++) {
+        this.data[i]![j] = Math.tanh(this.data[i]![j]!)
+      }
+    }
+    return this
+  }
+
+  /**
+   * Applies the softmax activation function to the matrix.
+   * This is applied to the output layer for classification.
+   * It uses a numerically stable formula.
+   */
+  softmax() {
+    // This function only makes sense for a vector (n x 1 matrix)
+    // but we can apply it element-wise for the formula.
+
+    // 1. Find the max value for numerical stability
+    let max = -Infinity
+    for (let i = 0; i < this.rows; i++) {
+      for (let j = 0; j < this.cols; j++) {
+        if (this.data[i]![j]! > max) {
+          max = this.data[i]![j]!
+        }
+      }
+    }
+
+    // 2. Calculate the sum of the exponentials (shifted by max)
+    let sum = 0
+    for (let i = 0; i < this.rows; i++) {
+      for (let j = 0; j < this.cols; j++) {
+        sum += Math.exp(this.data[i]![j]! - max)
+      }
+    }
+
+    // 3. Apply the softmax formula to each element
+    for (let i = 0; i < this.rows; i++) {
+      for (let j = 0; j < this.cols; j++) {
+        this.data[i]![j]! = Math.exp(this.data[i]![j]! - max) / sum
+      }
+    }
+
+    return this
+  }
 }

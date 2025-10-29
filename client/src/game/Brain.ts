@@ -162,15 +162,15 @@ class NeuralNetwork {
 
     let hidden0 = Matrix.multiply(this.weights_ih, inputs)
     hidden0!.add(this.bias_h0)
-    hidden0!.sigmoid()
+    hidden0!.tanh()
 
     let hidden1 = Matrix.multiply(this.weights_hh, hidden0!)
     hidden1!.add(this.bias_h1)
-    hidden1!.sigmoid()
+    hidden1!.tanh()
 
     let output = Matrix.multiply(this.weights_ho, hidden1!)
     output!.add(this.bias_o)
-    output!.sigmoid()
+    output!.softmax()
 
     const outputArray = output!.toArray()
     this.previous = outputArray
@@ -204,7 +204,7 @@ export default class Brain {
     if (neuralnetwork) {
       this.neuralnetwork = neuralnetwork
     } else {
-      this.neuralnetwork = new NeuralNetwork(24, 16, 16, 3)
+      this.neuralnetwork = new NeuralNetwork(24, 16, 16, 4)
     }
   }
   copy(): Brain {
@@ -347,15 +347,16 @@ export default class Brain {
 
     switch (decisionIndex) {
       case 0:
-        // Go straight (do nothing)
+        this.snake?.up()
         break
       case 1:
-        // Turn right
-        this.moveDirectional('right')
+        this.snake?.right()
         break
       case 2:
-        // Turn left
-        this.moveDirectional('left')
+        this.snake?.left()
+        break
+      case 3:
+        this.snake?.down()
         break
     }
   }

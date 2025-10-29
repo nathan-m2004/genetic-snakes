@@ -6,6 +6,16 @@ import Game from './game/main';
 const gameCanvas = ref<HTMLCanvasElement | null>(null);
 const gameSpeed = ref(0.5);
 
+// New/updated refs for game controls
+const noDraw = ref(false)
+const showBest = ref(false)
+const showBestCount = ref(1) // <-- Setting for how many to show
+
+// --- New Refs for Game Stats ---
+const liveBestScore = ref(0); // <-- Stat for the actual best score
+const generation = ref(1);
+// ------------------------------
+
 // 2. Use shallowRef instead of ref
 const gameInstance = shallowRef<InstanceType<typeof Game> | null>(null);
 
@@ -16,27 +26,69 @@ onMounted(() => {
     gameCanvas.value.width = rect.width;
     gameCanvas.value.height = rect.height;
 
-    // This code is all correct
     gameInstance.value = new Game(gameCanvas.value);
 
     if (gameInstance.value.frames && typeof gameInstance.value.frames.gameTick === 'number') {
       gameSpeed.value = gameInstance.value.frames.gameTick;
     }
 
+    // Set initial default value on game instance
+    // @ts-ignore
+    gameInstance.value.best_size = showBestCount.value;
+
     gameInstance.value.start()
+
+    // --- New Stats Polling Loop ---
+    function updateGameStats() {
+      if (gameInstance.value) {
+        // @ts-ignore
+        // Renamed 'bestSize' to 'liveBestScore' and polling 'currentBestScore'
+        // *** You may need to change 'currentBestScore' to your actual stat property name ***
+        liveBestScore.value = gameInstance.value.currentBestScore || 0;
+        // @ts-ignore
+        generation.value = gameInstance.value.generation || 1;
+      }
+      requestAnimationFrame(updateGameStats); // Continue the loop
+    }
+    updateGameStats(); // Start the loop
+    // ------------------------------
 
     window.addEventListener('resize', handleResize);
   }
 });
 
-// This code is all correct
+// Watcher for Game Speed
 watch(gameSpeed, (newSpeed) => {
   if (gameInstance.value && gameInstance.value.frames) {
     gameInstance.value.frames.gameTick = newSpeed;
   }
 });
 
-// This code is all correct
+// Watcher for noDraw (Disable Rendering)
+watch(noDraw, (value) => {
+  if (gameInstance.value) {
+    gameInstance.value.runNoDraw = value;
+  }
+});
+
+// Watcher for showBest (the checkbox)
+watch(showBest, (value) => {
+  if (gameInstance.value) {
+    // @ts-ignore
+    gameInstance.value.showBest = value;
+  }
+});
+
+// --- New Watcher for showBestCount (the number input) ---
+watch(showBestCount, (value) => {
+  if (gameInstance.value) {
+    // @ts-ignore
+    // Updates the 'best_size' setting on the game instance
+    gameInstance.value.best_size = value;
+  }
+});
+// --------------------------------------------------------
+
 function handleResize() {
   if (gameCanvas.value && gameInstance.value) {
     const rect = gameCanvas.value.getBoundingClientRect();
@@ -51,39 +103,91 @@ function handleResize() {
 </script>
 
 <template>
-  <div style="gap: 1rem;">
-    <header class="header-content">
-      <h1 class="title">
-        Genetic Snakes
-      </h1>
-      <p class="subtitle">NFT Breeding & On-Chain High Scores</p>
-    </header>
+  <div class="game-layout">
 
-    <main class="main-content">
-      <canvas id="game-canvas" ref="gameCanvas"></canvas>
-    </main>
-  </div>
+    <div class="game-column">
+      <header class="header-content">
+        <h1 class="title">
+          Genetic Snakes
+        </h1>
+        <p class="subtitle">NFT Breeding & On-Chain High Scores</p>
+      </header>
 
-  <div style="gap: 1rem;">
-    <main class="main-content">
-      <div class="controls-container">
-        <label for="speed-slider">
-          Game Speed: <strong>{{ gameSpeed.toFixed(2) }}</strong>
-        </label>
-        <input id="speed-slider" type="range" v-model.number="gameSpeed" min="0.05" max="1.5" step="0.01" />
+      <main class="main-content">
+        <canvas id="game-canvas" ref="gameCanvas"></canvas>
+      </main>
+    </div>
 
-        <div class="button-group">
-          <button @click="gameInstance?.start()">Start</button>
-          <button @click="gameInstance?.stop()">Stop</button>
-          <button @click="gameInstance?.runWithNoDraw()">Run (No Draw)</button>
+    <div class="controls-column">
+      <main class="main-content">
+        <div class="controls-container">
+
+          <div class="button-group">
+            <button @click="gameInstance?.start()">Start</button>
+            <button @click="gameInstance?.stop()">Stop</button>
+          </div>
+
+          <hr class="divider" />
+
+          <label for="speed-slider">
+            Game Speed: <strong>{{ gameSpeed.toFixed(2) }}</strong>
+          </label>
+          <input id="speed-slider" type="range" v-model.number="gameSpeed" min="0.05" max="1.5" step="0.01" />
+
+          <hr class="divider" />
+
+          <div class="checkbox-group">
+            <input id="no-draw-check" type="checkbox" v-model="noDraw" />
+            <label for="no-draw-check">Disable Rendering (Fast-Forward)</label>
+          </div>
+
+          <div class="checkbox-group show-best-group">
+            <input id="show-best-check" type="checkbox" v-model="showBest" />
+            <label for="show-best-check">Show Best Snake(s)</label>
+            <input type="number" v-model.number="showBestCount" min="1" :max="gameInstance?.POPULATION_SIZE || 50"
+              class="small-number-input" :disabled="!showBest" />
+          </div>
+          <hr class="divider" />
+          <div class="stats-group">
+            <h3 class="group-title">Live Stats</h3>
+            <div class="stat-item">
+              <span>Generation:</span>
+              <strong>{{ generation }}</strong>
+            </div>
+            <div class="stat-item">
+              <span>Best Score:</span>
+              <strong>{{ liveBestScore }}</strong>
+            </div>
+          </div>
+          <hr class="divider" />
+          <div class="stats-group">
+            <h3 class="group-title">GA Parameters</h3>
+            <div class="stat-item">
+              <span>Population:</span>
+              <strong>{{ gameInstance?.POPULATION_SIZE || 'N/A' }}</strong>
+            </div>
+            <div class="stat-item">
+              <span>Tournament:</span>
+              <strong>{{ gameInstance?.TOURNAMENT_SIZE || 'N/A' }}</strong>
+            </div>
+            <div class="stat-item">
+              <span>Elitism:</span>
+              <strong>{{ gameInstance?.ELITISM_SIZE || 'N/A' }}</strong>
+            </div>
+            <div class="stat-item">
+              <span>Mutation Rate:</span>
+              <strong>{{ gameInstance?.MUTATION_RATE || 'N/A' }}</strong>
+            </div>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
+
   </div>
 </template>
 
 <style>
-/* (Your style code remains exactly the same) */
+/* (Your existing styles remain) */
 :root {
   --c-deep-forest: hsla(196, 40%, 7%, 1);
   --c-shadow: hsla(191, 50%, 6%, 1);
@@ -98,7 +202,6 @@ function handleResize() {
   max-width: 800px;
   box-sizing: border-box;
   border-radius: 8px;
-  margin: 1rem 0;
 }
 
 .header-content {
@@ -106,6 +209,7 @@ function handleResize() {
   border: 1px solid var(--color-border);
   padding: 1.5rem 2rem;
   text-align: center;
+  margin-bottom: 1rem;
 }
 
 .title {
@@ -139,7 +243,7 @@ function handleResize() {
 .controls-container {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
   padding: 0.5rem;
 }
 
@@ -152,12 +256,12 @@ function handleResize() {
 .controls-container input[type="range"] {
   width: 100%;
   cursor: pointer;
+  margin-top: -0.5rem;
 }
 
 .button-group {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.5rem;
 }
 
 .button-group button {
@@ -175,5 +279,102 @@ function handleResize() {
 
 .button-group button:hover {
   background-color: var(--color-border-hover);
+}
+
+/* --- LAYOUT STYLES --- */
+
+.game-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.game-column {
+  flex: 2;
+  min-width: 320px;
+}
+
+.controls-column {
+  flex: 1;
+  min-width: 280px;
+}
+
+.divider {
+  border: none;
+  height: 1px;
+  background-color: var(--color-border);
+  margin: 0.25rem 0;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.checkbox-group label {
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-group input[type="checkbox"] {
+  cursor: pointer;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* --- STATS STYLES --- */
+.group-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-heading);
+  margin: 0 0 0.5rem 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.stats-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.stat-item span {
+  color: var(--color-text);
+}
+
+.stat-item strong {
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+/* --- NEW STYLES for Number Input --- */
+.show-best-group {
+  justify-content: space-between;
+}
+
+.small-number-input {
+  width: 4rem;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--color-background-mute);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.small-number-input:disabled {
+  background-color: var(--color-background-soft);
+  color: var(--c-text-muted);
+  cursor: not-allowed;
 }
 </style>
