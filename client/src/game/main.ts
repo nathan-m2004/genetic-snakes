@@ -103,7 +103,6 @@ export default class Game {
     return best!
   }
   async saveSnakeFiles() {
-    if (this.generation + 1 > this.generationsToSave) return
     this.isProcessingGeneration = true
     const savePromise = this.players.map(async (player, index) => {
       const [mainFile, brain, pngBlob] = await player.save(
@@ -122,7 +121,7 @@ export default class Game {
 
     await Promise.all(savePromise)
 
-    if (this.generation + 1 === this.generationsToSave) {
+    if (this.generation - 1 === this.generationsToSave) {
       const generationsToSave = this.generationsToSave
       this.zip.generateAsync({ type: 'blob' }).then(function (content) {
         // 5. Create a download link and trigger the download
