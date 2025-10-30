@@ -9,7 +9,7 @@ lerna-debug.log*
 
 node_modules
 .DS_Store
-dist/nfts/GeneticSnakes_Generations_0-10.zip
+dist
 dist-ssr
 coverage
 *.local
