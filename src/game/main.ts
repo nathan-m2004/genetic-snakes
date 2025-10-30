@@ -82,7 +82,7 @@ export default class Game {
 
     this.runNoDraw = false
 
-    this.saveGeneration = true
+    this.saveGeneration = false
     this.generationsToSave = 10
     this.isProcessingGeneration = false
     this.zip = new JSZip()

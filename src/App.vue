@@ -110,7 +110,6 @@ function handleResize() {
         <h1 class="title">
           Genetic Snakes
         </h1>
-        <p class="subtitle">NFT Breeding & On-Chain High Scores</p>
       </header>
 
       <main class="main-content">
