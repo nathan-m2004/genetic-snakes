@@ -1,7 +1,3 @@
-This was supposed to be a Solana Hackathon project, the idea was making a NFT for each Snake. Might still do it but not in time for the hackathon :(
-
-WORKING PROGRESS
-
 the brains
 --
 
